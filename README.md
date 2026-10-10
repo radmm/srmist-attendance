@@ -1,20 +1,24 @@
-# Attendance Tracker
+# SRM IST - Coding Challenge 
+## Student attendance tracker
 
-A command-line attendance tracker written in C. It supports marking attendance,
-editing a mark with a reason, viewing course reports and edit history, and
+
+- a command-line attendance tracker written in C
+- supports marking attendance,
+- editing a mark with a reason, viewing course reports and edit history, and
 undoing or redoing changes.
 
-## Build and run
+## build and run
 
 ```sh
 gcc -Wall -Wextra -o attendance attendance.c
+
 ./attendance
 ```
 
 Enter one command per line. Type `EXIT` or send end-of-file (Ctrl-D on Linux or
 macOS) to quit.
 
-## Commands
+## demo commands 
 
 ```text
 MARK <date> <course> <student> <P|A>
@@ -26,5 +30,5 @@ HISTORY
 EXIT
 ```
 
-Successful attendance changes and undo/redo operations are recorded in
+successful attendance changes and undo/redo operations are recorded in
 `log.txt` and replayed when the program starts.
