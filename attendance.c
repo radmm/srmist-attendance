@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+/* one student's mark for a course and date */
 struct rec {
     char d[20];
     char c[20];
@@ -9,6 +10,7 @@ struct rec {
     int ed;
 };
 
+/* enough detail to undo or redo a change */
 struct act {
     int t;
     char d[20];
@@ -25,6 +27,7 @@ struct act us[1000];
 struct act rs[1000];
 int na = 0, nau = 0, nu = 0, nr = 0, q = 0;
 
+/* find the matching attendance entry */
 int find(char *d, char *c, char *s)
 {
     int i;
@@ -35,6 +38,7 @@ int find(char *d, char *c, char *s)
     return -1;
 }
 
+/* add a mark and save it for undo */
 int domark(char *d, char *c, char *s, char *p)
 {
     if (strcmp(p, "P") != 0 && strcmp(p, "A") != 0) {
@@ -63,6 +67,7 @@ int domark(char *d, char *c, char *s, char *p)
     return 1;
 }
 
+/* change a mark and keep a note of why */
 int doedit(char *d, char *c, char *s, char *p, char *r)
 {
     int i, j, k;
@@ -108,6 +113,7 @@ int doedit(char *d, char *c, char *s, char *p, char *r)
     return 1;
 }
 
+/* roll back the most recent change */
 int doundo()
 {
     struct act a;
@@ -132,6 +138,7 @@ int doundo()
     return 1;
 }
 
+/* bring back the last undone change */
 int doredo()
 {
     struct act a;
@@ -162,6 +169,7 @@ int doredo()
     return 1;
 }
 
+/* show attendance totals for a course */
 void report(char *c)
 {
     char st[100][20];
@@ -195,6 +203,7 @@ void report(char *c)
     }
 }
 
+/* print the saved edits */
 void history()
 {
     int i;
@@ -206,6 +215,7 @@ void history()
         printf("AUDIT: %s %s %s %c->%c (%s)\n", au[i].d, au[i].c, au[i].s, au[i].o, au[i].n, au[i].r);
 }
 
+/* handle a command and log successful changes */
 void run(char *line)
 {
     char cmd[20], a[20], b[20], c[20], d[20], e[20];
@@ -253,6 +263,7 @@ void run(char *line)
     }
 }
 
+/* replay the log, then accept commands */
 int main()
 {
     char line[200];
