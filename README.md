@@ -20,6 +20,24 @@ macOS) to quit.
 
 ## demo commands 
 
+
+```sh
+./attendance <<'EOF'
+MARK 2026-10-10 CS101 Alice P
+MARK 2026-10-10 CS101 Bob A
+EDIT 2026-10-10 CS101 Alice A corrected
+REPORT CS101
+HISTORY
+UNDO
+REPORT CS101
+REDO
+REPORT CS101
+EXIT
+EOF
+```
+
+skeletol parameters:
+
 ```text
 MARK <date> <course> <student> <P|A>
 EDIT <date> <course> <student> <P|A> <reason>
