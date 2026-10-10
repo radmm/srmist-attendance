@@ -38,6 +38,10 @@ EXIT
 EOF
 ```
 
+```text
+cd /workspaces/coding-challenge-s1 && gcc -Wall -Wextra -o attendance attendance.c
+```
+
 command formats:
 
 ```text
