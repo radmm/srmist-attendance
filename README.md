@@ -66,5 +66,7 @@ Bob 0/1 0.00%
 AUDIT: 2026-10-10 CS101 Alice P->A (corrected)
 ```
 
+cd /workspaces/coding-challenge-s1 && gcc -Wall -Wextra -o attendance attendance.c
+
 successful attendance changes and undo/redo operations are recorded in
 `log.txt` and replayed when the program starts.
