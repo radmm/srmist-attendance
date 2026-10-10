@@ -2,298 +2,285 @@
 #include <string.h>
 
 struct rec {
-    char date[20];
-    char course[40];
-    char student[40];
-    char val;
+    char d[20];
+    char c[20];
+    char s[20];
+    char v;
+    int ed;
 };
 
-struct change {
-    char date[20];
-    char course[40];
-    char student[40];
-    char oldv;
-    char newv;
-    char reason[40];
+struct act {
+    int t;
+    char d[20];
+    char c[20];
+    char s[20];
+    char o;
+    char n;
+    char r[20];
 };
 
-struct rec r[1000];
-struct change a[2000];
-struct change u[2000];
-struct change d[2000];
-int n, h, un, dn;
+struct rec att[1000];
+struct act au[1000];
+struct act us[1000];
+struct act rs[1000];
+int na = 0, nau = 0, nu = 0, nr = 0, q = 0;
 
-int find(char *date, char *course, char *student)
+int find(char *d, char *c, char *s)
 {
     int i;
-    for (i = 0; i < n; i++)
-        if (!strcmp(r[i].date, date) &&
-            !strcmp(r[i].course, course) &&
-            !strcmp(r[i].student, student)) {
+    for (i = 0; i < na; i++) {
+        if (strcmp(att[i].d, d) == 0 && strcmp(att[i].c, c) == 0 && strcmp(att[i].s, s) == 0)
             return i;
-        }
+    }
     return -1;
 }
 
-void save(void)
+int domark(char *d, char *c, char *s, char *p)
 {
-    FILE *f;
+    if (strcmp(p, "P") != 0 && strcmp(p, "A") != 0) {
+        if (!q) printf("status must be P or A\n");
+        return 0;
+    }
+    if (find(d, c, s) != -1) {
+        if (!q) printf("already marked, use EDIT\n");
+        return 0;
+    }
+    strcpy(att[na].d, d);
+    strcpy(att[na].c, c);
+    strcpy(att[na].s, s);
+    att[na].v = p[0];
+    att[na].ed = 0;
+    na++;
+    us[nu].t = 1;
+    strcpy(us[nu].d, d);
+    strcpy(us[nu].c, c);
+    strcpy(us[nu].s, s);
+    us[nu].o = ' ';
+    us[nu].n = p[0];
+    strcpy(us[nu].r, "-");
+    nu++;
+    nr = 0;
+    return 1;
+}
+
+int doedit(char *d, char *c, char *s, char *p, char *r)
+{
+    int i, j, k;
+    if (strcmp(p, "P") != 0 && strcmp(p, "A") != 0) {
+        if (!q) printf("status must be P or A\n");
+        return 0;
+    }
+    i = find(d, c, s);
+    if (i == -1) {
+        if (!q) printf("not found\n");
+        return 0;
+    }
+    if (att[i].v == p[0]) {
+        if (!q) printf("no change\n");
+        return 0;
+    }
+    if (att[i].ed > 0) {
+        k = -1;
+        for (j = 0; j < nau; j++) {
+            if (strcmp(au[j].d, d) == 0 && strcmp(au[j].c, c) == 0 && strcmp(au[j].s, s) == 0)
+                k = j;
+        }
+        if (!q) {
+            printf("conflict, keeping earlier\n");
+            printf("earlier: AUDIT: %s %s %s %c->%c (%s)\n", au[k].d, au[k].c, au[k].s, au[k].o, au[k].n, au[k].r);
+            printf("new: AUDIT: %s %s %s %c->%c (%s)\n", d, c, s, att[i].v, p[0], r);
+        }
+        return 0;
+    }
+    au[nau].t = 2;
+    strcpy(au[nau].d, d);
+    strcpy(au[nau].c, c);
+    strcpy(au[nau].s, s);
+    au[nau].o = att[i].v;
+    au[nau].n = p[0];
+    strcpy(au[nau].r, r);
+    us[nu] = au[nau];
+    nau++;
+    nu++;
+    att[i].v = p[0];
+    att[i].ed++;
+    nr = 0;
+    return 1;
+}
+
+int doundo()
+{
+    struct act a;
     int i;
-    f = fopen("attendance.txt", "w");
-    if (f) {
-        for (i = 0; i < n; i++)
-                fprintf(f, "%s %s %s %c\n", r[i].date, r[i].course,
-                    r[i].student, r[i].val);
-        fclose(f);
+    if (nu == 0) {
+        if (!q) printf("nothing to undo\n");
+        return 0;
     }
-    f = fopen("audit.txt", "w");
-    if (f) {
-        for (i = 0; i < h; i++)
-                fprintf(f, "%s %s %s %c %c %s\n",
-                    a[i].date, a[i].course, a[i].student,
-                    a[i].oldv, a[i].newv, a[i].reason);
-        fclose(f);
-    }
-}
-
-void load(void)
-{
-    FILE *f;
-    f = fopen("attendance.txt", "r");
-    if (f) {
-        while (n < 1000 &&
-               fscanf(f, "%19s %39s %39s %c", r[n].date,
-                      r[n].course, r[n].student, &r[n].val) == 4) {
-            if (r[n].val == 'P' || r[n].val == 'A') {
-                n++;
-            }
-        }
-        fclose(f);
-    }
-    f = fopen("audit.txt", "r");
-    if (f) {
-         while (h < 2000 &&
-             fscanf(f, "%19s %39s %39s %c %c %39s",
-                 a[h].date, a[h].course, a[h].student,
-                 &a[h].oldv, &a[h].newv, a[h].reason) == 6) {
-             h++;
-         }
-        fclose(f);
-    }
-}
-
-int valid_value(char *s)
-{
-    return strlen(s) == 1 && (s[0] == 'P' || s[0] == 'A');
-}
-
-void mark(char w[10][100], int argc)
-{
-    if (argc != 5 || strlen(w[1]) > 19 || strlen(w[2]) > 39 ||
-        strlen(w[3]) > 39 || !valid_value(w[4])) {
-        puts("invalid args");
-        return;
-    }
-
-    if (find(w[1], w[2], w[3]) >= 0) {
-        puts("already exists");
-        return;
-    }
-    if (n == 1000) {
-        puts("limit reached");
-        return;
-    }
-
-    strcpy(r[n].date, w[1]);
-    strcpy(r[n].course, w[2]);
-    strcpy(r[n].student, w[3]);
-    r[n].val = w[4][0];
-    n++;
-
-    save();
-    puts("marked");
-}
-
-void edit(char w[10][100], int argc)
-{
-    struct change z;
-    int x, i;
-
-    if (argc == 5) {
-        puts("reason required");
-        return;
-    }
-    if (argc != 6 || strlen(w[1]) > 19 || strlen(w[2]) > 39 ||
-        strlen(w[3]) > 39 || !valid_value(w[4]) || strlen(w[5]) > 39) {
-        puts("invalid args");
-        return;
-    }
-
-    x = find(w[1], w[2], w[3]);
-    if (x < 0) {
-        puts("not found");
-        return;
-    }
-    if (h == 2000) {
-        puts("history full");
-        return;
-    }
-
-    for (i = h - 1; i >= 0; i--) {
-        if (!strcmp(a[i].date, w[1]) &&
-            !strcmp(a[i].course, w[2]) &&
-            !strcmp(a[i].student, w[3])) {
-            if (a[i].newv != r[x].val) {
-                puts("conflict warning");
-            }
-            break;
-        }
-    }
-
-    strcpy(z.date, r[x].date);
-    strcpy(z.course, r[x].course);
-    strcpy(z.student, r[x].student);
-    strcpy(z.reason, w[5]);
-    z.oldv = r[x].val;
-    z.newv = w[4][0];
-
-    r[x].val = z.newv;
-    a[h++] = z;
-    u[un++] = z;
-    dn = 0;
-
-    save();
-    puts("edited");
-}
-
-void report(char w[10][100], int argc)
-{
-    char names[1000][40];
-    int present[1000], total[1000];
-    int i, j, count;
-
-    if (argc != 2 || strlen(w[1]) > 39) {
-        puts("invalid args");
-        return;
-    }
-
-    count = 0;
-    for (i = 0; i < n; i++) {
-        if (strcmp(r[i].course, w[1]) == 0) {
-            for (j = 0; j < count; j++) {
-                if (strcmp(names[j], r[i].student) == 0) {
-                    break;
-                }
-            }
-            if (j == count) {
-                strcpy(names[count], r[i].student);
-                present[count] = 0;
-                total[count] = 0;
-                count++;
-            }
-            total[j]++;
-            if (r[i].val == 'P') {
-                present[j]++;
-            }
-        }
-    }
-
-    if (count == 0) {
-        puts("not found");
-        return;
-    }
-    for (i = 0; i < count; i++) {
-        printf("%s %d %d %.2f%%\n", names[i], present[i], total[i],
-               100.0 * present[i] / total[i]);
-    }
-}
-
-void move_change(int redo, int argc)
-{
-    struct change z;
-    int x;
-
-    if (argc != 1) {
-        puts("invalid args");
-        return;
-    }
-    if ((!redo && un == 0) || (redo && dn == 0)) {
-        puts(redo ? "nothing to redo" : "nothing to undo");
-        return;
-    }
-
-    if (redo) {
-        z = d[--dn];
+    nu--;
+    a = us[nu];
+    if (a.t == 1) {
+        na--;
     } else {
-        z = u[--un];
+        i = find(a.d, a.c, a.s);
+        att[i].v = a.o;
+        att[i].ed--;
+        nau--;
     }
-
-    x = find(z.date, z.course, z.student);
-    if (x < 0) {
-        puts("not found");
-        return;
-    }
-    r[x].val = redo ? z.newv : z.oldv;
-
-    if (redo) {
-        u[un++] = z;
-    } else {
-        d[dn++] = z;
-    }
-
-    save();
-    puts(redo ? "redone" : "undone");
+    rs[nr] = a;
+    nr++;
+    if (!q) printf("undone\n");
+    return 1;
 }
 
-void history(int argc)
+int doredo()
+{
+    struct act a;
+    int i;
+    if (nr == 0) {
+        if (!q) printf("nothing to redo\n");
+        return 0;
+    }
+    nr--;
+    a = rs[nr];
+    if (a.t == 1) {
+        strcpy(att[na].d, a.d);
+        strcpy(att[na].c, a.c);
+        strcpy(att[na].s, a.s);
+        att[na].v = a.n;
+        att[na].ed = 0;
+        na++;
+    } else {
+        i = find(a.d, a.c, a.s);
+        att[i].v = a.n;
+        att[i].ed++;
+        au[nau] = a;
+        nau++;
+    }
+    us[nu] = a;
+    nu++;
+    if (!q) printf("redone\n");
+    return 1;
+}
+
+void report(char *c)
+{
+    char st[100][20];
+    int tot[100], pr[100];
+    int ns = 0, i, j, f;
+    for (i = 0; i < na; i++) {
+        if (strcmp(att[i].c, c) != 0) continue;
+        f = -1;
+        for (j = 0; j < ns; j++) {
+            if (strcmp(st[j], att[i].s) == 0) f = j;
+        }
+        if (f == -1) {
+            strcpy(st[ns], att[i].s);
+            tot[ns] = 0;
+            pr[ns] = 0;
+            f = ns;
+            ns++;
+        }
+        tot[f]++;
+        if (att[i].v == 'P') pr[f]++;
+    }
+    if (ns == 0) {
+        printf("not found\n");
+        return;
+    }
+    for (j = 0; j < ns; j++)
+        printf("%s %d/%d %.2f%%\n", st[j], pr[j], tot[j], pr[j] * 100.0 / tot[j]);
+    for (i = 0; i < nau; i++) {
+        if (strcmp(au[i].c, c) == 0)
+            printf("AUDIT: %s %s %s %c->%c (%s)\n", au[i].d, au[i].c, au[i].s, au[i].o, au[i].n, au[i].r);
+    }
+}
+
+void history()
 {
     int i;
-
-    if (argc != 1) {
-        puts("invalid args");
+    if (nau == 0) {
+        printf("no history\n");
         return;
     }
-    if (h == 0) {
-        puts("no history");
-        return;
-    }
+    for (i = 0; i < nau; i++)
+        printf("AUDIT: %s %s %s %c->%c (%s)\n", au[i].d, au[i].c, au[i].s, au[i].o, au[i].n, au[i].r);
+}
 
-    for (i = 0; i < h; i++) {
-        printf("%s %s %s %c -> %c %s\n", a[i].date, a[i].course,
-               a[i].student, a[i].oldv, a[i].newv, a[i].reason);
+void run(char *line)
+{
+    char cmd[20], a[20], b[20], c[20], d[20], e[20];
+    int n, ok = 0;
+    FILE *f;
+    n = sscanf(line, "%19s %19s %19s %19s %19s %19s", cmd, a, b, c, d, e);
+    if (n <= 0) return;
+    if (strcmp(cmd, "MARK") == 0) {
+        if (n != 5) {
+            printf("wrong args\n");
+            return;
+        }
+        ok = domark(a, b, c, d);
+    } else if (strcmp(cmd, "EDIT") == 0) {
+        if (n == 5) {
+            printf("reason code missing\n");
+            return;
+        }
+        if (n != 6) {
+            printf("wrong args\n");
+            return;
+        }
+        ok = doedit(a, b, c, d, e);
+    } else if (strcmp(cmd, "REPORT") == 0) {
+        if (n != 2) {
+            printf("wrong args\n");
+            return;
+        }
+        report(a);
+    } else if (strcmp(cmd, "UNDO") == 0) {
+        ok = doundo();
+    } else if (strcmp(cmd, "REDO") == 0) {
+        ok = doredo();
+    } else if (strcmp(cmd, "HISTORY") == 0) {
+        history();
+    } else {
+        printf("invalid command\n");
+    }
+    if (ok && q == 0) {
+        f = fopen("log.txt", "a");
+        if (f != NULL) {
+            fprintf(f, "%s\n", line);
+            fclose(f);
+        }
     }
 }
 
-int main(void)
+int main()
 {
-    char line[512];
-    char w[10][100];
-    int argc;
-
-    load();
-    while (scanf(" %511[^\n]", line) == 1) {
-        argc = sscanf(line,
-                      "%99s %99s %99s %99s %99s %99s %99s %99s %99s %99s",
-                      w[0], w[1], w[2], w[3], w[4],
-                      w[5], w[6], w[7], w[8], w[9]);
-
-        if (strcmp(w[0], "MARK") == 0) {
-            mark(w, argc);
-        } else if (strcmp(w[0], "EDIT") == 0) {
-            edit(w, argc);
-        } else if (strcmp(w[0], "REPORT") == 0) {
-            report(w, argc);
-        } else if (strcmp(w[0], "UNDO") == 0) {
-            move_change(0, argc);
-        } else if (strcmp(w[0], "REDO") == 0) {
-            move_change(1, argc);
-        } else if (strcmp(w[0], "HISTORY") == 0) {
-            history(argc);
-        } else {
-            puts("invalid command");
+    char line[200];
+    int i;
+    FILE *f;
+    f = fopen("log.txt", "r");
+    if (f != NULL) {
+        q = 1;
+        while (fgets(line, 200, f) != NULL) {
+            i = strlen(line);
+            while (i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r')) {
+                line[i - 1] = 0;
+                i--;
+            }
+            run(line);
         }
+        fclose(f);
+        q = 0;
     }
-
-    save();
+    while (1) {
+        if (fgets(line, 200, stdin) == NULL) break;
+        i = strlen(line);
+        while (i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r')) {
+            line[i - 1] = 0;
+            i--;
+        }
+        if (strcmp(line, "EXIT") == 0) break;
+        run(line);
+    }
     return 0;
 }
