@@ -11,9 +11,13 @@ undoing or redoing changes.
 
 ```sh
 gcc -Wall -Wextra -o attendance attendance.c
-
 ./attendance
 ```
+##
+```text
+cd /workspaces/coding-challenge-s1 && gcc -Wall -Wextra -o attendance attendance.c
+```
+##
 
 Enter one command per line. Type `EXIT` or send end-of-file (Ctrl-D on Linux or
 macOS) to quit.
@@ -70,9 +74,7 @@ Bob 0/1 0.00%
 AUDIT: 2026-10-10 CS101 Alice P->A (corrected)
 ```
 
-```text
-cd /workspaces/coding-challenge-s1 && gcc -Wall -Wextra -o attendance attendance.c
-```
+
 
 
 successful attendance changes and undo/redo operations are recorded in
