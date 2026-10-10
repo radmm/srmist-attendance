@@ -1,294 +1,289 @@
 #include <stdio.h>
 #include <string.h>
 
-/* one student's mark for a course and date */
+/* one student's attendance for a course */
 struct rec {
-    char d[20];
-    char c[20];
-    char s[20];
-    char v;
-    int ed;
+    char date[20];
+    char course[20];
+    char student[20];
+    char status;
+    int edits;
 };
 
-/* enough detail to undo or redo a change */
+/* stores a change so it can be undone or redone */
 struct act {
-    int t;
-    char d[20];
-    char c[20];
-    char s[20];
-    char o;
-    char n;
-    char r[20];
+    int type;
+    char date[20];
+    char course[20];
+    char student[20];
+    char old;
+    char new;
+    char reason[20];
 };
 
 struct rec att[1000];
 struct act au[1000];
 struct act us[1000];
 struct act rs[1000];
-int na = 0, nau = 0, nu = 0, nr = 0, q = 0;
+/* counts for attendance, edit history, undo, and redo */
+int total = 0, audit = 0, nu = 0, redo = 0, quiet = 0;
 
-/* find the matching attendance entry */
-int find(char *d, char *c, char *s)
+/* find an attendance record using its date, course, and student */
+int find(char *date, char *course, char *student)
 {
-    int i;
-    for (i = 0; i < na; i++) {
-        if (strcmp(att[i].d, d) == 0 && strcmp(att[i].c, c) == 0 && strcmp(att[i].s, s) == 0)
-            return i;
+    int index;
+    for (index = 0; index < total; index++) {
+        if (strcmp(att[index].date, date) == 0 && strcmp(att[index].course, course) == 0 && strcmp(att[index].student, student) == 0)
+            return index;
     }
     return -1;
 }
 
-/* add a mark and save it for undo */
-int domark(char *d, char *c, char *s, char *p)
+int domark(char *date, char *course, char *student, char *status)
 {
-    if (strcmp(p, "P") != 0 && strcmp(p, "A") != 0) {
-        if (!q) printf("status must be P or A\n");
+    if (strcmp(status, "P") != 0 && strcmp(status, "A") != 0) {
+        if (!quiet) printf("status must be P or A\n");
         return 0;
     }
-    if (find(d, c, s) != -1) {
-        if (!q) printf("already marked, use EDIT\n");
+    if (find(date, course, student) != -1) {
+        if (!quiet) printf("already marked, use EDIT\n");
         return 0;
     }
-    strcpy(att[na].d, d);
-    strcpy(att[na].c, c);
-    strcpy(att[na].s, s);
-    att[na].v = p[0];
-    att[na].ed = 0;
-    na++;
-    us[nu].t = 1;
-    strcpy(us[nu].d, d);
-    strcpy(us[nu].c, c);
-    strcpy(us[nu].s, s);
-    us[nu].o = ' ';
-    us[nu].n = p[0];
-    strcpy(us[nu].r, "-");
+    strcpy(att[total].date, date);
+    strcpy(att[total].course, course);
+    strcpy(att[total].student, student);
+    att[total].status = status[0];
+    att[total].edits = 0;
+    total++;
+    us[nu].type = 1;
+    strcpy(us[nu].date, date);
+    strcpy(us[nu].course, course);
+    strcpy(us[nu].student, student);
+    us[nu].old = ' ';
+    us[nu].new = status[0];
+    strcpy(us[nu].reason, "-");
     nu++;
-    nr = 0;
+    redo = 0;
     return 1;
 }
 
-/* change a mark and keep a note of why */
-int doedit(char *d, char *c, char *s, char *p, char *r)
+int doedit(char *date, char *course, char *student, char *status, char *reason)
 {
-    int i, j, k;
-    if (strcmp(p, "P") != 0 && strcmp(p, "A") != 0) {
-        if (!q) printf("status must be P or A\n");
+    int index, pos, found;
+    if (strcmp(status, "P") != 0 && strcmp(status, "A") != 0) {
+        if (!quiet) printf("status must be P or A\n");
         return 0;
     }
-    i = find(d, c, s);
-    if (i == -1) {
-        if (!q) printf("not found\n");
+    index = find(date, course, student);
+    if (index == -1) {
+        if (!quiet) printf("not found\n");
         return 0;
     }
-    if (att[i].v == p[0]) {
-        if (!q) printf("no change\n");
+    if (att[index].status == status[0]) {
+        if (!quiet) printf("no change\n");
         return 0;
     }
-    if (att[i].ed > 0) {
-        k = -1;
-        for (j = 0; j < nau; j++) {
-            if (strcmp(au[j].d, d) == 0 && strcmp(au[j].c, c) == 0 && strcmp(au[j].s, s) == 0)
-                k = j;
+    if (att[index].edits > 0) {
+        found = -1;
+        for (pos = 0; pos < audit; pos++) {
+            if (strcmp(au[pos].date, date) == 0 && strcmp(au[pos].course, course) == 0 && strcmp(au[pos].student, student) == 0)
+                found = pos;
         }
-        if (!q) {
+        if (!quiet) {
             printf("conflict, keeping earlier\n");
-            printf("earlier: AUDIT: %s %s %s %c->%c (%s)\n", au[k].d, au[k].c, au[k].s, au[k].o, au[k].n, au[k].r);
-            printf("new: AUDIT: %s %s %s %c->%c (%s)\n", d, c, s, att[i].v, p[0], r);
+            printf("earlier: AUDIT: %s %s %s %c->%c (%s)\n", au[found].date, au[found].course, au[found].student, au[found].old, au[found].new, au[found].reason);
+            printf("new: AUDIT: %s %s %s %c->%c (%s)\n", date, course, student, att[index].status, status[0], reason);
         }
         return 0;
     }
-    au[nau].t = 2;
-    strcpy(au[nau].d, d);
-    strcpy(au[nau].c, c);
-    strcpy(au[nau].s, s);
-    au[nau].o = att[i].v;
-    au[nau].n = p[0];
-    strcpy(au[nau].r, r);
-    us[nu] = au[nau];
-    nau++;
+    au[audit].type = 2;
+    strcpy(au[audit].date, date);
+    strcpy(au[audit].course, course);
+    strcpy(au[audit].student, student);
+    au[audit].old = att[index].status;
+    au[audit].new = status[0];
+    strcpy(au[audit].reason, reason);
+    us[nu] = au[audit];
+    audit++;
     nu++;
-    att[i].v = p[0];
-    att[i].ed++;
-    nr = 0;
+    att[index].status = status[0];
+    att[index].edits++;
+    redo = 0;
     return 1;
 }
 
-/* roll back the most recent change */
+/* undo the most recent change */
 int doundo()
 {
-    struct act a;
-    int i;
+    struct act action;
+    int index;
     if (nu == 0) {
-        if (!q) printf("nothing to undo\n");
+        if (!quiet) printf("nothing to undo\n");
         return 0;
     }
     nu--;
-    a = us[nu];
-    if (a.t == 1) {
-        na--;
+    action = us[nu];
+    if (action.type == 1) {
+        total--;
     } else {
-        i = find(a.d, a.c, a.s);
-        att[i].v = a.o;
-        att[i].ed--;
-        nau--;
+        index = find(action.date, action.course, action.student);
+        att[index].status = action.old;
+        att[index].edits--;
+        audit--;
     }
-    rs[nr] = a;
-    nr++;
-    if (!q) printf("undone\n");
+    rs[redo] = action;
+    redo++;
+    if (!quiet) printf("undone\n");
     return 1;
 }
 
-/* bring back the last undone change */
+/* redo the last undone change */
 int doredo()
 {
-    struct act a;
-    int i;
-    if (nr == 0) {
-        if (!q) printf("nothing to redo\n");
+    struct act action;
+    int index;
+    if (redo == 0) {
+        if (!quiet) printf("nothing to redo\n");
         return 0;
     }
-    nr--;
-    a = rs[nr];
-    if (a.t == 1) {
-        strcpy(att[na].d, a.d);
-        strcpy(att[na].c, a.c);
-        strcpy(att[na].s, a.s);
-        att[na].v = a.n;
-        att[na].ed = 0;
-        na++;
+    redo--;
+    action = rs[redo];
+    if (action.type == 1) {
+        strcpy(att[total].date, action.date);
+        strcpy(att[total].course, action.course);
+        strcpy(att[total].student, action.student);
+        att[total].status = action.new;
+        att[total].edits = 0;
+        total++;
     } else {
-        i = find(a.d, a.c, a.s);
-        att[i].v = a.n;
-        att[i].ed++;
-        au[nau] = a;
-        nau++;
+        index = find(action.date, action.course, action.student);
+        att[index].status = action.new;
+        att[index].edits++;
+        au[audit] = action;
+        audit++;
     }
-    us[nu] = a;
+    us[nu] = action;
     nu++;
-    if (!q) printf("redone\n");
+    if (!quiet) printf("redone\n");
     return 1;
 }
 
-/* show attendance totals for a course */
-void report(char *c)
+void report(char *course)
 {
-    char st[100][20];
-    int tot[100], pr[100];
-    int ns = 0, i, j, f;
-    for (i = 0; i < na; i++) {
-        if (strcmp(att[i].c, c) != 0) continue;
-        f = -1;
-        for (j = 0; j < ns; j++) {
-            if (strcmp(st[j], att[i].s) == 0) f = j;
+    char students[100][20];
+    int totals[100], present[100];
+    int count = 0, index, pos, found;
+    for (index = 0; index < total; index++) {
+        if (strcmp(att[index].course, course) != 0) continue;
+        found = -1;
+        for (pos = 0; pos < count; pos++) {
+            if (strcmp(students[pos], att[index].student) == 0) found = pos;
         }
-        if (f == -1) {
-            strcpy(st[ns], att[i].s);
-            tot[ns] = 0;
-            pr[ns] = 0;
-            f = ns;
-            ns++;
+        if (found == -1) {
+            strcpy(students[count], att[index].student);
+            totals[count] = 0;
+            present[count] = 0;
+            found = count;
+            count++;
         }
-        tot[f]++;
-        if (att[i].v == 'P') pr[f]++;
+        totals[found]++;
+        if (att[index].status == 'P') present[found]++;
     }
-    if (ns == 0) {
+    if (count == 0) {
         printf("not found\n");
         return;
     }
-    for (j = 0; j < ns; j++)
-        printf("%s %d/%d %.2f%%\n", st[j], pr[j], tot[j], pr[j] * 100.0 / tot[j]);
-    for (i = 0; i < nau; i++) {
-        if (strcmp(au[i].c, c) == 0)
-            printf("AUDIT: %s %s %s %c->%c (%s)\n", au[i].d, au[i].c, au[i].s, au[i].o, au[i].n, au[i].r);
+    for (pos = 0; pos < count; pos++)
+        printf("%s %d/%d %.2f%%\n", students[pos], present[pos], totals[pos], present[pos] * 100.0 / totals[pos]);
+    for (index = 0; index < audit; index++) {
+        if (strcmp(au[index].course, course) == 0)
+            printf("AUDIT: %s %s %s %c->%c (%s)\n", au[index].date, au[index].course, au[index].student, au[index].old, au[index].new, au[index].reason);
     }
 }
 
-/* print the saved edits */
 void history()
 {
-    int i;
-    if (nau == 0) {
+    int index;
+    if (audit == 0) {
         printf("no history\n");
         return;
     }
-    for (i = 0; i < nau; i++)
-        printf("AUDIT: %s %s %s %c->%c (%s)\n", au[i].d, au[i].c, au[i].s, au[i].o, au[i].n, au[i].r);
+    for (index = 0; index < audit; index++)
+        printf("AUDIT: %s %s %s %c->%c (%s)\n", au[index].date, au[index].course, au[index].student, au[index].old, au[index].new, au[index].reason);
 }
 
-/* handle a command and log successful changes */
 void run(char *line)
 {
-    char cmd[20], a[20], b[20], c[20], d[20], e[20];
-    int n, ok = 0;
-    FILE *f;
-    n = sscanf(line, "%19s %19s %19s %19s %19s %19s", cmd, a, b, c, d, e);
-    if (n <= 0) return;
-    if (strcmp(cmd, "MARK") == 0) {
-        if (n != 5) {
+    char command[20], date[20], course[20], student[20], status[20], reason[20];
+    int count, done = 0;
+    FILE *file;
+    count = sscanf(line, "%19s %19s %19s %19s %19s %19s", command, date, course, student, status, reason);
+    if (count <= 0) return;
+    if (strcmp(command, "MARK") == 0) {
+        if (count != 5) {
             printf("wrong args\n");
             return;
         }
-        ok = domark(a, b, c, d);
-    } else if (strcmp(cmd, "EDIT") == 0) {
-        if (n == 5) {
+        done = domark(date, course, student, status);
+    } else if (strcmp(command, "EDIT") == 0) {
+        if (count == 5) {
             printf("reason code missing\n");
             return;
         }
-        if (n != 6) {
+        if (count != 6) {
             printf("wrong args\n");
             return;
         }
-        ok = doedit(a, b, c, d, e);
-    } else if (strcmp(cmd, "REPORT") == 0) {
-        if (n != 2) {
+        done = doedit(date, course, student, status, reason);
+    } else if (strcmp(command, "REPORT") == 0) {
+        if (count != 2) {
             printf("wrong args\n");
             return;
         }
-        report(a);
-    } else if (strcmp(cmd, "UNDO") == 0) {
-        ok = doundo();
-    } else if (strcmp(cmd, "REDO") == 0) {
-        ok = doredo();
-    } else if (strcmp(cmd, "HISTORY") == 0) {
+        report(date);
+    } else if (strcmp(command, "UNDO") == 0) {
+        done = doundo();
+    } else if (strcmp(command, "REDO") == 0) {
+        done = doredo();
+    } else if (strcmp(command, "HISTORY") == 0) {
         history();
     } else {
         printf("invalid command\n");
     }
-    if (ok && q == 0) {
-        f = fopen("log.txt", "a");
-        if (f != NULL) {
-            fprintf(f, "%s\n", line);
-            fclose(f);
+    if (done && quiet == 0) {
+        file = fopen("log.txt", "a");
+        if (file != NULL) {
+            fprintf(file, "%s\n", line);
+            fclose(file);
         }
     }
 }
 
-/* replay the log, then accept commands */
 int main()
 {
     char line[200];
-    int i;
-    FILE *f;
-    f = fopen("log.txt", "r");
-    if (f != NULL) {
-        q = 1;
-        while (fgets(line, 200, f) != NULL) {
-            i = strlen(line);
-            while (i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r')) {
-                line[i - 1] = 0;
-                i--;
+    int index;
+    FILE *file;
+    file = fopen("log.txt", "r");
+    if (file != NULL) {
+        quiet = 1;
+        while (fgets(line, 200, file) != NULL) {
+            index = strlen(line);
+            while (index > 0 && (line[index - 1] == '\n' || line[index - 1] == '\r')) {
+                line[index - 1] = 0;
+                index--;
             }
             run(line);
         }
-        fclose(f);
-        q = 0;
+        fclose(file);
+        quiet = 0;
     }
     while (1) {
         if (fgets(line, 200, stdin) == NULL) break;
-        i = strlen(line);
-        while (i > 0 && (line[i - 1] == '\n' || line[i - 1] == '\r')) {
-            line[i - 1] = 0;
-            i--;
+        index = strlen(line);
+        while (index > 0 && (line[index - 1] == '\n' || line[index - 1] == '\r')) {
+            line[index - 1] = 0;
+            index--;
         }
         if (strcmp(line, "EXIT") == 0) break;
         run(line);
